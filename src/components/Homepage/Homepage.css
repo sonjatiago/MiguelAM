@@ -83,28 +83,14 @@
   -webkit-text-fill-color: transparent;
 }
 
-.hero-content h2 {
-  font-size: 60px;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 24px;
-  background: linear-gradient(135deg, 
-    var(--gradient-start), 
-    var(--gradient-middle)
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-description {
-  font-size: 24px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  margin-bottom: 40px;
-  max-width: 600px;
+.logo2 {
+  height: 200px;
+  margin-bottom: 1rem;
+  display: block;
   margin-left: auto;
   margin-right: auto;
-}
+  border-radius: 20px;
+ }
 
 /* CTA Buttons */
 .cta-button {

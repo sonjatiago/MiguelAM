@@ -7,6 +7,7 @@ import './NavBar.css';
 
 export const NavBar = () => {
  const [isMenuOpen, setIsMenuOpen] = useState(false);
+ const [isScrolled, setIsScrolled] = useState(false);
  const [activeSection, setActiveSection] = useState('');
  const location = useLocation();
  const navigate = useNavigate();
@@ -20,6 +21,7 @@ export const NavBar = () => {
 
  useEffect(() => {
    const handleScroll = () => {
+     setIsScrolled(window.scrollY > 20);
      const sections = ['home', 'services'];
      const current = sections.find(section => {
        const element = document.getElementById(section);
@@ -33,26 +35,20 @@ export const NavBar = () => {
    };
 
    window.addEventListener('scroll', handleScroll);
+   handleScroll();
    return () => window.removeEventListener('scroll', handleScroll);
  }, []);
 
  const handleNavClick = (e, path, section) => {
    e.preventDefault();
-   
    if (path.startsWith('/#')) {
      if (location.pathname !== '/') {
        navigate('/');
        setTimeout(() => {
-         const element = document.getElementById(section);
-         if (element) {
-           element.scrollIntoView({ behavior: 'smooth' });
-         }
+         document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
        }, 100);
      } else {
-       const element = document.getElementById(section);
-       if (element) {
-         element.scrollIntoView({ behavior: 'smooth' });
-       }
+       document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
      }
    } else {
      navigate(path);
@@ -61,7 +57,7 @@ export const NavBar = () => {
  };
 
  return (
-   <header className="navbar">
+   <header className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
      <div className="navbar-container">
        <Link 
          to="/" 
@@ -71,30 +67,30 @@ export const NavBar = () => {
          <img src={Logo} alt="Logo" className="logo" />
        </Link>
 
-       <nav className="desktop-nav">
-         {navItems.map((item) => (
-           <Link
-             key={item.path}
-             to={item.path}
-             className={`nav-link ${
-               item.section ? 
+       <div className="nav-buttons">
+         <nav className="desktop-nav">
+           {navItems.map((item) => (
+             <Link
+               key={item.path}
+               to={item.path}
+               className={`nav-link ${item.section ? 
                  (activeSection === item.section ? 'active' : '') : 
-                 (location.pathname === item.path ? 'active' : '')
-             }`}
-             onClick={(e) => handleNavClick(e, item.path, item.section)}
-           >
-             {item.label}
-           </Link>
-         ))}
-       </nav>
+                 (location.pathname === item.path ? 'active' : '')}`}
+               onClick={(e) => handleNavClick(e, item.path, item.section)}
+             >
+               {item.label}
+             </Link>
+           ))}
+         </nav>
 
-       <button 
-         className="menu-toggle"
-         onClick={() => setIsMenuOpen(!isMenuOpen)}
-         aria-label="Toggle menu"
-       >
-         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-       </button>
+         <button 
+           className="menu-toggle"
+           onClick={() => setIsMenuOpen(!isMenuOpen)}
+           aria-label="Toggle menu"
+         >
+           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+         </button>
+       </div>
 
        <AnimatePresence>
          {isMenuOpen && (
@@ -116,11 +112,9 @@ export const NavBar = () => {
                  <Link
                    key={item.path}
                    to={item.path}
-                   className={`nav-item ${
-                     item.section ? 
-                       (activeSection === item.section ? 'active' : '') : 
-                       (location.pathname === item.path ? 'active' : '')
-                   }`}
+                   className={`nav-item ${item.section ?
+                     (activeSection === item.section ? 'active' : '') :
+                     (location.pathname === item.path ? 'active' : '')}`}
                    onClick={(e) => handleNavClick(e, item.path, item.section)}
                  >
                    {item.label}
@@ -134,5 +128,3 @@ export const NavBar = () => {
    </header>
  );
 };
-
-export default NavBar;

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { MapPin, Package, Send, Plane } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
@@ -13,12 +13,97 @@ const PRICE_CONFIG = {
   }
 };
 
+const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Returns distance in kilometers
+};
+
+const toRad = value => (value * Math.PI) / 180;
+
+const LocationInput = ({ label, value, suggestions, onChange, onSelect }) => {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [selectedValue, setSelectedValue] = useState('');
+
+  useEffect(() => {
+    if (value === '') {
+      setInputValue('');
+      setSelectedValue('');
+    }
+  }, [value]);
+
+  const handleSuggestionClick = (suggestion) => {
+    const formattedAddress = suggestion.formatted;
+    setSelectedValue(formattedAddress);
+    setInputValue(formattedAddress);
+    onSelect(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    setSelectedValue('');
+    onChange(newValue);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium flex items-center gap-2">
+        <MapPin className="h-4 w-4" />
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={selectedValue || inputValue}
+          onChange={handleInputChange}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          className="w-full p-2 border rounded-lg"
+          placeholder={`Introduza ${label.toLowerCase()}`}
+          required
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <ul className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg max-h-48 overflow-auto">
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="p-2 hover:bg-gray-50 cursor-pointer"
+              >
+                {suggestion.formatted}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Quotation = () => {
+  const summaryRef = useRef(null);
+  
   const [formData, setFormData] = useState({
-    serviceType: '',
+    serviceType: 'carrinha',
     startLocation: '',
     endLocation: '',
     weight: '',
+    volumes: '',
+    dimensions: {
+      length: '',
+      width: '',
+      height: ''
+    },
     clientName: '',
     clientEmail: ''
   });
@@ -37,6 +122,21 @@ const Quotation = () => {
   });
 
   const apiKey = '7747d85f0d034e54a29de6f865fee8f2';
+
+  const getButtonStyles = (type) => {
+    const baseStyles = "p-4 rounded-lg border flex items-center gap-2 transition-all duration-200 w-full";
+    
+    const styles = {
+      carrinha: formData.serviceType === 'carrinha'
+        ? 'border-blue-500 bg-blue-500 text-white hover:bg-blue-600'
+        : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50 text-gray-700',
+      aviao: formData.serviceType === 'aviao'
+        ? 'border-green-500 bg-green-500 text-white hover:bg-green-600'
+        : 'border-gray-200 hover:border-green-500 hover:bg-green-50 text-gray-700'
+    };
+
+    return `${baseStyles} ${styles[type]}`;
+  };
 
   const getAddressSuggestions = useCallback(async (query, type) => {
     if (!query) {
@@ -66,22 +166,37 @@ const Quotation = () => {
   }), [getAddressSuggestions]);
 
   const calculatePrice = useCallback((distance, serviceType, weight) => {
+    if (serviceType === 'aviao') return null;
+    
     const config = PRICE_CONFIG[serviceType];
     const basePrice = config.baseRate * distance;
     
-    if (serviceType === 'aviao') return { 
-      totalPrice: basePrice,
-      breakdown: { basePrice, weightPrice: 0 }
-    };
-    
     const weightRange = config.weightRanges.find(range => weight <= range.max);
-    const weightPrice = basePrice * weightRange.factor;
+    const weightPrice = basePrice * (weightRange?.factor || 1);
     
     return {
       totalPrice: basePrice + weightPrice,
       breakdown: { basePrice, weightPrice }
     };
   }, []);
+
+  const resetForm = (serviceType) => {
+    setFormData(prev => ({
+      ...prev,
+      serviceType,
+      startLocation: '',
+      endLocation: '',
+      weight: '',
+      volumes: '',
+      dimensions: {
+        length: '',
+        width: '',
+        height: ''
+      }
+    }));
+    setSuggestions({ start: [], end: [] });
+    setState(prev => ({ ...prev, isCalculated: false, quotation: null, error: null }));
+  };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -122,6 +237,14 @@ const Quotation = () => {
         loading: false
       }));
 
+      // Add smooth scrolling after state update
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -129,6 +252,15 @@ const Quotation = () => {
         loading: false
       }));
     }
+  };
+
+  const handleFinalSubmit = () => {
+    if (!formData.clientName || !formData.clientEmail) {
+      setState(prev => ({ ...prev, error: 'Por favor, preencha seu nome e email' }));
+      return;
+    }
+    // Handle final submission logic here
+    console.log('Form submitted:', formData);
   };
 
   return (
@@ -153,22 +285,18 @@ const Quotation = () => {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, serviceType: 'carrinha' }))}
-                className={`p-4 rounded-lg border flex items-center gap-2 ${
-                  formData.serviceType === 'carrinha' ? 'border-blue-500 bg-blue-50' : ''
-                }`}
+                onClick={() => resetForm('carrinha')}
+                className={getButtonStyles('carrinha')}
               >
-                <Package className="h-5 w-5" />
+                <Package className={`h-5 w-5 ${formData.serviceType === 'carrinha' ? 'text-white' : 'text-gray-600'}`} />
                 <span>Terreste dentro da Península Ibérica</span>
               </button>
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, serviceType: 'aviao' }))}
-                className={`p-4 rounded-lg border flex items-center gap-2 ${
-                  formData.serviceType === 'aviao' ? 'border-blue-500 bg-blue-50' : ''
-                }`}
+                onClick={() => resetForm('aviao')}
+                className={getButtonStyles('aviao')}
               >
-                <Plane className="h-5 w-5" />
+                <Plane className={`h-5 w-5 ${formData.serviceType === 'aviao' ? 'text-white' : 'text-gray-600'}`} />
                 <span>Avião Internacional</span>
               </button>
             </div>
@@ -202,19 +330,76 @@ const Quotation = () => {
             }}
           />
 
-          {formData.serviceType === 'carrinha' && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Peso (kg)
-              </label>
-              <input
-                type="number"
-                value={formData.weight}
-                onChange={e => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                className="w-full p-2 border rounded-lg"
-                placeholder="Introduza o peso"
-                required
-              />
+          {(formData.serviceType === 'carrinha' || formData.serviceType === 'aviao') && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Peso (kg)
+                </label>
+                <input
+                  type="number"
+                  value={formData.weight}
+                  onChange={e => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="Introduza o peso"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Número de Volumes
+                </label>
+                <input
+                  type="number"
+                  value={formData.volumes}
+                  onChange={e => setFormData(prev => ({ ...prev, volumes: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="Introduza o número de volumes"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Dimensões (cm)
+                </label>
+                <div className="grid grid-cols-3 gap-4">
+                  <input
+                    type="number"
+                    value={formData.dimensions.length}
+                    onChange={e => setFormData(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, length: e.target.value }
+                    }))}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Comprimento"
+                    required
+                  />
+                  <input
+                    type="number"
+                    value={formData.dimensions.width}
+                    onChange={e => setFormData(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, width: e.target.value }
+                    }))}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Largura"
+                    required
+                  />
+                  <input
+                    type="number"
+                    value={formData.dimensions.height}
+                    onChange={e => setFormData(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, height: e.target.value }
+                    }))}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Altura"
+                    required
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -229,33 +414,72 @@ const Quotation = () => {
         </button>
       </form>
 
-      {state.isCalculated && state.quotation && (
-        <div className="space-y-6 p-6 bg-gray-50 rounded-lg">
-          <div>
-            <div className="text-2xl font-bold">
-              €{state.quotation.totalPrice.toFixed(2)}
-            </div>
-            <div className="text-sm text-gray-600">Preço Total</div>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Preço Base</span>
-              <span>€{state.quotation.breakdown.basePrice.toFixed(2)}</span>
-            </div>
-            
-            {formData.serviceType === 'carrinha' && state.quotation.breakdown.weightPrice > 0 && (
-              <div className="flex justify-between text-sm">
-                <span>Ajuste de Peso</span>
-                <span>€{state.quotation.breakdown.weightPrice.toFixed(2)}</span>
+      {state.isCalculated && (
+        <div ref={summaryRef} className="space-y-6 p-6 bg-gray-50 rounded-lg">
+          {formData.serviceType === 'carrinha' ? (
+            <>
+              <div>
+                <div className="text-2xl font-bold">
+                  €{state.quotation.totalPrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-gray-600">Preço Total</div>
               </div>
-            )}
-            
-            <div className="flex justify-between text-sm">
-              <span>Distância</span>
-              <span>{state.distance.toFixed(1)} km</span>
-            </div>
-          </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Preço Base</span>
+                  <span>€{state.quotation.breakdown.basePrice.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Ajuste de Peso</span>
+                  <span>€{state.quotation.breakdown.weightPrice.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Distância</span>
+                  <span>{state.distance.toFixed(1)} km</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-center py-4 mb-6">
+                <p className="text-lg font-medium text-gray-800">
+                  O preço do seu orçamento será calculado e enviado por email
+                </p>
+              </div>
+              <div className="space-y-4 bg-gray-100 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-700">Detalhes da Sua Encomenda:</h3>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Origem:</span>
+                    <span>{formData.startLocation}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Destino:</span>
+                    <span>{formData.endLocation}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Peso:</span>
+                    <span>{formData.weight} kg</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Volumes:</span>
+                    <span>{formData.volumes}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Dimensões:</span>
+                    <span>{formData.dimensions.length} x {formData.dimensions.width} x {formData.dimensions.height} cm</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Distância:</span>
+                    <span>{state.distance?.toFixed(1)} km</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="space-y-4 pt-4 border-t">
             <div className="space-y-2">
@@ -285,10 +509,7 @@ const Quotation = () => {
             <button
               type="button"
               className="w-full bg-green-600 text-white p-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
-              onClick={() => {
-                // Handle submission logic here
-                console.log('Form submitted:', formData);
-              }}
+              onClick={handleFinalSubmit}
             >
               Enviar Pedido
             </button>
@@ -298,61 +519,5 @@ const Quotation = () => {
     </div>
   );
 };
-
-const LocationInput = ({ label, value, suggestions, onChange, onSelect }) => {
-  const [showSuggestions, setShowSuggestions] = useState(true);
-
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium flex items-center gap-2">
-        <MapPin className="h-4 w-4" />
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          onFocus={() => setShowSuggestions(true)}
-          className="w-full p-2 border rounded-lg"
-          placeholder={`Introduza ${label.toLowerCase()}`}
-          required
-        />
-        {showSuggestions && suggestions.length > 0 && (
-          <ul className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg max-h-48 overflow-auto">
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={index}
-                onClick={() => {
-                  onSelect(suggestion);
-                  setShowSuggestions(false);
-                }}
-                className="p-2 hover:bg-gray-50 cursor-pointer"
-              >
-                {suggestion.formatted}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-    Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-const toRad = value => (value * Math.PI) / 180;
 
 export default Quotation;

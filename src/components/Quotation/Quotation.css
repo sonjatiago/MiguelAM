@@ -20,6 +20,7 @@
   backdrop-filter: blur(8px);
 }
 
+
 h2 {
   font-size: 2rem;
   font-weight: 700;
@@ -176,3 +177,4 @@ button:disabled {
     font-size: 1.5rem;
   }
 }
+

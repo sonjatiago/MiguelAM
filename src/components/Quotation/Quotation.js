@@ -2,19 +2,42 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { MapPin, Package, Send, Plane } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
+// Keep existing PRICE_CONFIG, calculateHaversineDistance, and toRad functions...
 const PRICE_CONFIG = {
   aviao: { baseRate: 2, weightFactor: 1 },
-  carrinha: { 
+  carrinha: {
     baseRate: 2,
-    weightRanges: [
-      { max: 1000, factor: 1 },
-      { max: 3500, factor: 1.5 },
+    types: [
+      {
+        id: 'ligeira',
+        name: 'Carrinha Ligeira de Mercadorias',
+        example: 'ex. Citroen Berlingo',
+        maxWeight: 800,
+        maxVolume: 4400000,
+        basePrice: 100
+      },
+      {
+        id: 'furgao',
+        name: 'Carrinha Furgão',
+        example: 'ex. Peugeot Boxer',
+        maxWeight: 2000,
+        maxVolume: 10000000,
+        basePrice: 200
+      },
+      {
+        id: 'furgaoGrande',
+        name: 'Carrinha Furgão Grande',
+        example: 'ex. Iveco Daily',
+        maxWeight: 3500,
+        maxVolume: 18000000,
+        basePrice: 300
+      }
     ]
   }
 };
 
 const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
@@ -23,15 +46,16 @@ const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
     Math.cos(toRad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Returns distance in kilometers
+  return R * c;
 };
 
 const toRad = value => (value * Math.PI) / 180;
 
-const LocationInput = ({ label, value, suggestions, onChange, onSelect }) => {
+const LocationInput = ({ label, value, suggestions, onChange, onSelect, error }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [selectedValue, setSelectedValue] = useState('');
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (value === '') {
@@ -39,6 +63,12 @@ const LocationInput = ({ label, value, suggestions, onChange, onSelect }) => {
       setSelectedValue('');
     }
   }, [value]);
+
+  useEffect(() => {
+    if (error) {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const handleSuggestionClick = (suggestion) => {
     const formattedAddress = suggestion.formatted;
@@ -63,21 +93,25 @@ const LocationInput = ({ label, value, suggestions, onChange, onSelect }) => {
       </label>
       <div className="relative">
         <input
+          ref={inputRef}
           type="text"
           value={selectedValue || inputValue}
           onChange={handleInputChange}
           onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          className="w-full p-2 border rounded-lg"
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
+          className={`w-full p-2 border rounded-lg ${error ? 'border-red-500' : ''}`}
           placeholder={`Introduza ${label.toLowerCase()}`}
           required
         />
+        {error && (
+          <p className="text-sm text-red-500 mt-1">{error}</p>
+        )}
         {showSuggestions && suggestions.length > 0 && (
           <ul className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg max-h-48 overflow-auto">
             {suggestions.map((suggestion, index) => (
               <li
                 key={index}
-                onClick={() => handleSuggestionClick(suggestion)}
+                onMouseDown={() => handleSuggestionClick(suggestion)}
                 className="p-2 hover:bg-gray-50 cursor-pointer"
               >
                 {suggestion.formatted}
@@ -107,12 +141,13 @@ const Quotation = () => {
     clientName: '',
     clientEmail: ''
   });
+
+  const [fieldErrors, setFieldErrors] = useState({});
   
   const [state, setState] = useState({
     quotation: null,
     distance: null,
     loading: false,
-    error: null,
     isCalculated: false
   });
 
@@ -156,7 +191,10 @@ const Quotation = () => {
       
       setSuggestions(prev => ({ ...prev, [type]: formattedSuggestions }));
     } catch (error) {
-      setState(prev => ({ ...prev, error: 'Falha ao obter sugestões de endereço' }));
+      setFieldErrors(prev => ({
+        ...prev,
+        [type === 'start' ? 'startLocation' : 'endLocation']: 'Falha ao obter sugestões de endereço'
+      }));
     }
   }, [apiKey]);
 
@@ -165,18 +203,75 @@ const Quotation = () => {
     end: debounce(q => getAddressSuggestions(q, 'end'), 300)
   }), [getAddressSuggestions]);
 
-  const calculatePrice = useCallback((distance, serviceType, weight) => {
+  const calculatePrice = useCallback((distance, serviceType, weight, dimensions, volumes) => {
     if (serviceType === 'aviao') return null;
     
-    const config = PRICE_CONFIG[serviceType];
-    const basePrice = config.baseRate * distance;
+    const errors = {};
     
-    const weightRange = config.weightRanges.find(range => weight <= range.max);
-    const weightPrice = basePrice * (weightRange?.factor || 1);
+    if (!weight) errors.weight = 'Por favor, introduza o peso';
+    if (!volumes) errors.volumes = 'Por favor, introduza o número de volumes';
+    if (!dimensions.length || !dimensions.width || !dimensions.height) {
+      errors.dimensions = 'Por favor, preencha todas as dimensões';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      throw new Error('Validation failed');
+    }
+    
+    const config = PRICE_CONFIG[serviceType];
+    
+    const singleVolume = dimensions.length * dimensions.width * dimensions.height;
+    const totalVolume = singleVolume * volumes;
+    
+    if (weight <= 0) {
+      setFieldErrors({ weight: 'O peso deve ser maior que zero' });
+      throw new Error('Validation failed');
+    }
+    if (singleVolume <= 0) {
+      setFieldErrors({ dimensions: 'As dimensões devem ser maiores que zero' });
+      throw new Error('Validation failed');
+    }
+    if (volumes <= 0) {
+      setFieldErrors({ volumes: 'O número de volumes deve ser maior que zero' });
+      throw new Error('Validation failed');
+    }
+
+    const appropriateVan = config.types.find(type => 
+      weight <= type.maxWeight && totalVolume <= type.maxVolume
+    );
+    
+    if (!appropriateVan) {
+      if (weight > config.types[2].maxWeight) {
+        setFieldErrors({ weight: 'Peso excede o limite máximo de 3500kg' });
+      }
+      if (totalVolume > config.types[2].maxVolume) {
+        setFieldErrors({ 
+          volumes: 'Volume total excede o limite máximo de 18m³',
+          dimensions: 'Volume total excede o limite máximo de 18m³'
+        });
+      }
+      throw new Error('Validation failed');
+    }
+    
+    setFieldErrors({});
+    
+    const basePrice = appropriateVan.basePrice;
+    const distancePrice = config.baseRate * distance;
     
     return {
-      totalPrice: basePrice + weightPrice,
-      breakdown: { basePrice, weightPrice }
+      totalPrice: basePrice + distancePrice,
+      breakdown: { 
+        basePrice,
+        distancePrice,
+        vanType: {
+          name: appropriateVan.name,
+          example: appropriateVan.example
+        },
+        singleVolume,
+        totalVolume,
+        volumes
+      }
     };
   }, []);
 
@@ -195,25 +290,28 @@ const Quotation = () => {
       }
     }));
     setSuggestions({ start: [], end: [] });
-    setState(prev => ({ ...prev, isCalculated: false, quotation: null, error: null }));
+    setState(prev => ({ ...prev, isCalculated: false, quotation: null }));
+    setFieldErrors({});
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
     
-    if (!formData.serviceType) {
-      setState(prev => ({ ...prev, error: 'Por favor, selecione um tipo de serviço' }));
-      return;
-    }
-
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setFieldErrors({});
+    setState(prev => ({ ...prev, loading: true }));
 
     try {
       const startCoords = suggestions.start[0]?.geometry;
       const endCoords = suggestions.end[0]?.geometry;
       
-      if (!startCoords || !endCoords) {
-        throw new Error('Por favor, selecione endereços válidos das sugestões');
+      if (!startCoords) {
+        setFieldErrors(prev => ({ ...prev, startLocation: 'Por favor, selecione um endereço válido das sugestões' }));
+        throw new Error('Validation failed');
+      }
+      
+      if (!endCoords) {
+        setFieldErrors(prev => ({ ...prev, endLocation: 'Por favor, selecione um endereço válido das sugestões' }));
+        throw new Error('Validation failed');
       }
 
       const distance = calculateHaversineDistance(
@@ -223,10 +321,20 @@ const Quotation = () => {
         endCoords.lng
       );
 
+      const weight = parseFloat(formData.weight) || 0;
+      const volumes = parseFloat(formData.volumes) || 0;
+      const dimensions = {
+        length: parseFloat(formData.dimensions.length) || 0,
+        width: parseFloat(formData.dimensions.width) || 0,
+        height: parseFloat(formData.dimensions.height) || 0
+      };
+
       const quotation = calculatePrice(
         distance,
         formData.serviceType,
-        parseFloat(formData.weight) || 0
+        weight,
+        dimensions,
+        volumes
       );
 
       setState(prev => ({
@@ -237,29 +345,33 @@ const Quotation = () => {
         loading: false
       }));
 
-      // Add smooth scrolling after state update
-      setTimeout(() => {
-        summaryRef.current?.scrollIntoView({ 
+      if (summaryRef.current) {
+        summaryRef.current.scrollIntoView({ 
           behavior: 'smooth',
           block: 'start'
         });
-      }, 100);
+      }
 
     } catch (error) {
       setState(prev => ({
         ...prev,
-        error: error.message,
         loading: false
       }));
     }
   };
 
   const handleFinalSubmit = () => {
-    if (!formData.clientName || !formData.clientEmail) {
-      setState(prev => ({ ...prev, error: 'Por favor, preencha seu nome e email' }));
+    const errors = {};
+    if (!formData.clientName) {
+      errors.clientName = 'Por favor, preencha seu nome';
+    }
+    if (!formData.clientEmail) {
+      errors.clientEmail = 'Por favor, preencha seu email';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    // Handle final submission logic here
     console.log('Form submitted:', formData);
   };
 
@@ -269,12 +381,6 @@ const Quotation = () => {
         <h2 className="text-3xl font-bold">Obter Cotação</h2>
         <p className="text-gray-600">Calcule os custos de envio instantaneamente</p>
       </div>
-
-      {state.error && (
-        <div className="p-4 bg-red-100 text-red-800 rounded-lg">
-          {state.error}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6">
@@ -314,6 +420,7 @@ const Quotation = () => {
               setFormData(prev => ({ ...prev, startLocation: suggestion.formatted }));
               setSuggestions(prev => ({ ...prev, start: [suggestion] }));
             }}
+            error={fieldErrors.startLocation}
           />
 
           <LocationInput
@@ -328,39 +435,56 @@ const Quotation = () => {
               setFormData(prev => ({ ...prev, endLocation: suggestion.formatted }));
               setSuggestions(prev => ({ ...prev, end: [suggestion] }));
             }}
+            error={fieldErrors.endLocation}
           />
 
           {(formData.serviceType === 'carrinha' || formData.serviceType === 'aviao') && (
             <div className="space-y-6">
-              <div className="space-y-2">
+              <div ref={fieldErrors.weight ? undefined : null} className="space-y-2">
                 <label className="text-sm font-medium">
                   Peso (kg)
                 </label>
                 <input
                   type="number"
                   value={formData.weight}
-                  onChange={e => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
+                  onChange={e => {
+                    setFieldErrors(prev => ({ ...prev, weight: null }));
+                    setFormData(prev => ({ ...prev, weight: e.target.value }));
+                  }}
+                  className={`w-full p-2 border rounded-lg ${
+                    fieldErrors.weight ? 'border-red-500' : ''
+                  }`}
                   placeholder="Introduza o peso"
                   required
                 />
+                {fieldErrors.weight && (
+                  <p className="text-sm text-red-500">{fieldErrors.weight}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div ref={fieldErrors.volumes ? undefined : null} className="space-y-2">
                 <label className="text-sm font-medium">
                   Número de Volumes
                 </label>
                 <input
                   type="number"
                   value={formData.volumes}
-                  onChange={e => setFormData(prev => ({ ...prev, volumes: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
+                  onChange={e => {
+                    setFieldErrors(prev => ({ ...prev, volumes: null }));
+                    setFormData(prev => ({ ...prev, volumes: e.target.value }));
+                  }}
+                  className={`w-full p-2 border rounded-lg ${
+                    fieldErrors.volumes ? 'border-red-500' : ''
+                  }`}
                   placeholder="Introduza o número de volumes"
                   required
                 />
+                {fieldErrors.volumes && (
+                  <p className="text-sm text-red-500">{fieldErrors.volumes}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div ref={fieldErrors.dimensions ? undefined : null} className="space-y-2">
                 <label className="text-sm font-medium">
                   Dimensões (cm)
                 </label>
@@ -368,37 +492,55 @@ const Quotation = () => {
                   <input
                     type="number"
                     value={formData.dimensions.length}
-                    onChange={e => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, length: e.target.value }
-                    }))}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={e => {
+                      setFieldErrors(prev => ({ ...prev, dimensions: null }));
+                      setFormData(prev => ({
+                        ...prev,
+                        dimensions: { ...prev.dimensions, length: e.target.value }
+                      }));
+                    }}
+                    className={`w-full p-2 border rounded-lg ${
+                      fieldErrors.dimensions ? 'border-red-500' : ''
+                    }`}
                     placeholder="Comprimento"
                     required
                   />
                   <input
                     type="number"
                     value={formData.dimensions.width}
-                    onChange={e => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, width: e.target.value }
-                    }))}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={e => {
+                      setFieldErrors(prev => ({ ...prev, dimensions: null }));
+                      setFormData(prev => ({
+                        ...prev,
+                        dimensions: { ...prev.dimensions, width: e.target.value }
+                      }));
+                    }}
+                    className={`w-full p-2 border rounded-lg ${
+                      fieldErrors.dimensions ? 'border-red-500' : ''
+                    }`}
                     placeholder="Largura"
                     required
                   />
                   <input
                     type="number"
                     value={formData.dimensions.height}
-                    onChange={e => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, height: e.target.value }
-                    }))}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={e => {
+                      setFieldErrors(prev => ({ ...prev, dimensions: null }));
+                      setFormData(prev => ({
+                        ...prev,
+                        dimensions: { ...prev.dimensions, height: e.target.value }
+                      }));
+                    }}
+                    className={`w-full p-2 border rounded-lg ${
+                      fieldErrors.dimensions ? 'border-red-500' : ''
+                    }`}
                     placeholder="Altura"
                     required
                   />
                 </div>
+                {fieldErrors.dimensions && (
+                  <p className="text-sm text-red-500">{fieldErrors.dimensions}</p>
+                )}
               </div>
             </div>
           )}
@@ -427,13 +569,42 @@ const Quotation = () => {
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
+                  <span>Tipo de Veículo</span>
+                  <span>{state.quotation.breakdown.vanType.name}</span>
+                </div>
+                <div className="text-xs text-gray-500 text-right">
+                  {state.quotation.breakdown.vanType.example}
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Volume por Unidade</span>
+                  <span>
+                    {state.quotation.breakdown.singleVolume.toLocaleString()} cm³ 
+                    ({(state.quotation.breakdown.singleVolume / 1000000).toFixed(2)} m³)
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-sm">
+                  <span>Número de Volumes</span>
+                  <span>{state.quotation.breakdown.volumes}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Volume Total</span>
+                  <span>
+                    {state.quotation.breakdown.totalVolume.toLocaleString()} cm³ 
+                    ({(state.quotation.breakdown.totalVolume / 1000000).toFixed(2)} m³)
+                  </span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
                   <span>Preço Base</span>
                   <span>€{state.quotation.breakdown.basePrice.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span>Ajuste de Peso</span>
-                  <span>€{state.quotation.breakdown.weightPrice.toFixed(2)}</span>
+                  <span>Preço por Distância</span>
+                  <span>€{state.quotation.breakdown.distancePrice.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
@@ -488,10 +659,15 @@ const Quotation = () => {
                 type="text"
                 value={formData.clientName}
                 onChange={e => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
-                className="w-full p-2 border rounded-lg"
+                className={`w-full p-2 border rounded-lg ${
+                  fieldErrors.clientName ? 'border-red-500' : ''
+                }`}
                 placeholder="Introduza o seu nome"
                 required
               />
+              {fieldErrors.clientName && (
+                <p className="text-sm text-red-500">{fieldErrors.clientName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -500,10 +676,15 @@ const Quotation = () => {
                 type="email"
                 value={formData.clientEmail}
                 onChange={e => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
-                className="w-full p-2 border rounded-lg"
+                className={`w-full p-2 border rounded-lg ${
+                  fieldErrors.clientEmail ? 'border-red-500' : ''
+                }`}
                 placeholder="Introduza o seu email"
                 required
               />
+              {fieldErrors.clientEmail && (
+                <p className="text-sm text-red-500">{fieldErrors.clientEmail}</p>
+              )}
             </div>
 
             <button

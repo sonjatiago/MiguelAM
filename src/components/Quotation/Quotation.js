@@ -8,8 +8,7 @@ const PRICE_CONFIG = {
     baseRate: 2,
     weightRanges: [
       { max: 1000, factor: 1 },
-      { max: 2500, factor: 1.5 },
-      { max: Infinity, factor: 2 }
+      { max: 3500, factor: 1.5 },
     ]
   }
 };

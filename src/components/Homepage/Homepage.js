@@ -182,7 +182,7 @@ const Homepage = () => {
            <div className="icon-wrapper">
              <Users className="feature-icon" />
            </div>
-           <h3>Equipe Especializada</h3>
+           <h3>Equipa Especializada</h3>
            <p>Profissionais treinados e dedicados ao seu serviço</p>
          </div>
          <div className="feature-card">

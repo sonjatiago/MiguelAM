@@ -1,4 +1,3 @@
-/* NavBar.css */
 .navbar {
   position: fixed;
   top: 0;
@@ -10,52 +9,52 @@
   transition: all 0.3s ease;
   z-index: 1000;
   border-bottom: 1px solid rgba(0, 71, 171, 0.1);
- }
- 
- .navbar.scrolled {
+}
+
+.navbar.scrolled {
   background: rgba(0, 0, 0, 0.98);
   box-shadow: 0 4px 20px rgba(0, 71, 171, 0.1);
   padding: 12px 24px;
- }
- 
- .navbar-container {
+}
+
+.navbar-container {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: relative;
- }
- 
- .logo-container {
+}
+
+.logo-container {
   display: flex;
   align-items: center;
- }
- 
- .logo {
+}
+
+.logo {
   height: 40px;
   width: auto;
   transition: transform 0.3s ease;
- }
- 
- .logo:hover {
+}
+
+.logo:hover {
   transform: scale(1.05);
- }
- 
- .nav-buttons {
+}
+
+.nav-buttons {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   margin-left: auto;
- }
- 
- .desktop-nav {
+}
+
+.desktop-nav {
   display: flex;
   gap: 32px;
   align-items: center;
- }
- 
- .nav-menu {
+}
+
+.nav-menu {
   position: fixed;
   top: 0;
   right: 0;
@@ -69,9 +68,9 @@
   flex-direction: column;
   gap: 1.5rem;
   transition: transform 0.3s ease;
- }
- 
- .nav-link {
+}
+
+.nav-link {
   color: white;
   text-decoration: none;
   font-weight: 500;
@@ -80,9 +79,10 @@
   border-radius: 8px;
   transition: all 0.3s ease;
   position: relative;
- }
- 
- .nav-link::after {
+  white-space: nowrap;
+}
+
+.nav-link::after {
   content: '';
   position: absolute;
   bottom: -2px;
@@ -92,20 +92,20 @@
   background: linear-gradient(to right, var(--primary), var(--secondary));
   transition: all 0.3s ease;
   transform: translateX(-50%);
- }
- 
- .nav-link:hover::after,
- .nav-link.active::after {
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
   width: calc(100% - 32px);
- }
- 
- .nav-link:hover,
- .nav-link.active {
+}
+
+.nav-link:hover,
+.nav-link.active {
   color: var(--primary);
   background: var(--accent-soft);
- }
- 
- .menu-toggle {
+}
+
+.menu-toggle {
   background: none;
   border: none;
   padding: 0.5rem;
@@ -114,13 +114,13 @@
   align-items: center;
   color: white;
   transition: color 0.3s ease;
- }
- 
- .menu-toggle:hover {
+}
+
+.menu-toggle:hover {
   color: var(--primary);
- }
- 
- .nav-overlay {
+}
+
+.nav-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -129,40 +129,223 @@
   background: rgba(0, 0, 0, 0.5);
   z-index: 998;
   transition: opacity 0.3s ease;
- }
- 
- .nav-item {
+}
+
+.nav-item {
   color: white;
   text-decoration: none;
   font-size: 1.1rem;
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
   padding: 8px 16px;
   border-radius: 8px;
- }
- 
- .nav-item:hover {
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover,
+.nav-item.active {
   color: var(--primary);
   background: var(--accent-soft);
- }
- 
- @media (max-width: 768px) {
+}
+
+/* Language Switcher Styles */
+.language-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lang-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.lang-button span {
+  margin-left: 4px;
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 71, 171, 0.1);
+  overflow: hidden;
+  min-width: 160px;
+  z-index: 1001;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.lang-option {
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.lang-option:hover,
+.lang-option.active {
+  color: var(--primary);
+  background: var(--accent-soft);
+}
+
+.mobile-lang-switcher {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lang-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  padding: 0 16px;
+}
+
+@media (max-width: 768px) {
   .desktop-nav {
     display: none;
   }
-  
+
   .nav-buttons {
     width: auto;
   }
- }
- 
- @media (min-width: 769px) {
+
+  .menu-toggle {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
   .nav-menu,
   .nav-overlay {
     display: none !important;
   }
- 
+
   .menu-toggle {
     display: none;
   }
- }
+}
+
+/* Add these styles to your existing NavBar.css */
+
+.language-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+}
+
+.lang-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+
+.lang-button:hover {
+  background: var(--accent-soft);
+}
+
+.flag-icon {
+  width: 24px;
+  height: 16px;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.lang-button:hover .flag-icon {
+  transform: scale(1.1);
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  min-width: 160px;
+  z-index: 1001;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.lang-option:hover,
+.lang-option.active {
+  background: var(--accent-soft);
+}
+
+.lang-option .flag-icon {
+  width: 20px;
+  height: 14px;
+}
+
+.mobile-lang-switcher {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-lang-switcher .lang-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  padding: 0 16px;
+}
+
+.mobile-lang-switcher .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-lang-switcher .flag-icon {
+  width: 20px;
+  height: 14px;
+}
+
+@media (max-width: 768px) {
+  .language-switcher {
+    display: none;
+  }
+  
+  .mobile-lang-switcher .nav-item {
+    padding: 12px 16px;
+  }
+}

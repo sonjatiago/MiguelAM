@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 import './ContactUs.css';
 
 const ContactUs = () => {
+  const { language, translations } = useLanguage();
+  const t = translations[language];
+
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -11,10 +15,9 @@ const ContactUs = () => {
 
   const [formSubmitted, setFormSubmitted] = useState(false);
 
-  // Add useEffect to scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []); // Empty dependency array means this runs once when component mounts
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,12 +40,12 @@ const ContactUs = () => {
 
   return (
     <div className="contact-us">
-      <h2>Contacte-nos</h2>
-      <p>Se tiver alguma dúvida ou questão, não hesite em entrar em contacto connosco!</p>
+      <h2>{t.contactUs}</h2>
+      <p>{t.contactQuestion}</p>
 
       <div className="contact-container">
         <div className="contact-info">
-          <h3>Informações de Contacto</h3>
+          <h3>{t.contactInfo}</h3>
           <div className="info-item">
             <Mail size={20} />
             <a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a>
@@ -56,50 +59,50 @@ const ContactUs = () => {
         <div className="contact-form">
           {formSubmitted ? (
             <div className="success-message">
-              <h3>Obrigado pelo seu contacto!</h3>
-              <p>Em breve entraremos em contacto consigo.</p>
+              <h3>{t.thankYou}</h3>
+              <p>{t.willContact}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="nome">Nome:</label>
+                <label htmlFor="nome">{t.name}</label>
                 <input
                   type="text"
                   name="nome"
                   id="nome"
                   value={formData.nome}
                   onChange={handleChange}
-                  placeholder="O seu nome"
+                  placeholder={t.yourName}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email:</label>
+                <label htmlFor="email">{t.email}</label>
                 <input
                   type="email"
                   name="email"
                   id="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="O seu email"
+                  placeholder={t.yourEmail}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="mensagem">Mensagem:</label>
+                <label htmlFor="mensagem">{t.message}</label>
                 <textarea
                   name="mensagem"
                   id="mensagem"
                   value={formData.mensagem}
                   onChange={handleChange}
-                  placeholder="A sua mensagem"
+                  placeholder={t.yourMessage}
                   required
                 />
               </div>
 
-              <button type="submit">Enviar Mensagem</button>
+              <button type="submit">{t.sendMessage}</button>
             </form>
           )}
         </div>

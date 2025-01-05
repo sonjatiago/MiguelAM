@@ -1,0 +1,35 @@
+/* src/components/LanguageSwitcher/LanguageSwitcher.css */
+.language-switcher-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+}
+
+.flag-container {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.language-switcher-button:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .language-switcher-button {
+    padding: 12px;
+  }
+  
+  .flag-container {
+    font-size: 1.8rem;
+  }
+}

@@ -2,25 +2,25 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Phone, Mail } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 import './Footer.css';
 import logo from '../../assets/logo1.jpg';
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
   const location = useLocation();
+  const { language, translations } = useLanguage();
+  const t = translations[language];
 
   const handleNavClick = (e, path) => {
-    // Only handle special cases for homepage sections
     if (path === '/services') {
       e.preventDefault();
-      // If we're on the homepage, smooth scroll to services
       if (location.pathname === '/') {
         const servicesSection = document.getElementById('services');
         if (servicesSection) {
           servicesSection.scrollIntoView({ behavior: 'smooth' });
         }
       } else {
-        // If we're on another page, navigate to homepage with services hash
         window.location.href = '/#services';
       }
     }
@@ -30,7 +30,7 @@ export const Footer = () => {
     { 
       icon: <Phone size={24} />, 
       url: 'tel:+351919664601',
-      label: 'Telefone' 
+      label: language === 'pt' ? 'Telefone' : 'Phone'
     },
     {
       icon: <Mail size={24} />,
@@ -41,20 +41,20 @@ export const Footer = () => {
 
   const footerLinks = [
     {
-      title: 'Navegação',
+      title: t.navigation,
       links: [
-        { name: 'Início', path: '/' },
-        { name: 'Serviços', path: '/services' },
-        { name: 'Contacto', path: '/contactus' },
-        { name: 'Calculador de preços', path: '/quotation' },
+        { name: t.home, path: '/' },
+        { name: t.services, path: '/services' },
+        { name: t.contact, path: '/contactus' },
+        { name: t.priceCalculator, path: '/quotation' },
       ],
     },
     {
-      title: 'Legal',
+      title: t.legal,
       links: [
-        { name: 'Política de Privacidade', path: '/privacy' },
-        { name: 'Termos de Uso', path: '/terms' },
-        { name: 'Informações Legais', path: '/legal' },
+        { name: t.privacyPolicy, path: '/privacy' },
+        { name: t.termsOfUse, path: '/terms' },
+        { name: t.legalInfo, path: '/legal' },
       ],
     },
   ];
@@ -67,7 +67,7 @@ export const Footer = () => {
             <img src={logo} alt="Miguel AM Transportes Logo" className="footer-logo" />
           </Link>
           <p className="footer-description">
-            Transportamos a sua urgência
+            {t.weTransport}
           </p>
           <div className="social-links">
             {socialLinks.map((social, index) => (
@@ -111,7 +111,9 @@ export const Footer = () => {
 
       <div className="footer-bottom">
         <div className="footer-bottom-content">
-          <p>&copy; {currentYear} Miguel AM Transportes. Made by Tiago Guimarães. Todos os direitos reservados.</p>
+          <p>
+            &copy; {currentYear} Miguel AM Transportes. {t.madeBy} {t.allRightsReserved}
+          </p>
         </div>
       </div>
     </footer>

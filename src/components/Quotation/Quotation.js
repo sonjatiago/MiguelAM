@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { MapPin, Package, Send, Plane } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
-// Keep existing PRICE_CONFIG, calculateHaversineDistance, and toRad functions...
 const PRICE_CONFIG = {
   aviao: { baseRate: 2, weightFactor: 1 },
   carrinha: {
@@ -12,7 +11,7 @@ const PRICE_CONFIG = {
         name: 'Carrinha Comercial Ligeira',
         example: '2 europaletes',
         maxWeight: 600,
-        maxVolume: 2000000, // 2m³ in cm³
+        maxVolume: 2000000,
         dimensions: { height: 100, width: 120, length: 180 },
         pricePerKm: 0.40
       },
@@ -21,7 +20,7 @@ const PRICE_CONFIG = {
         name: 'Carrinha Furgão',
         example: '5 europaletes',
         maxWeight: 1200,
-        maxVolume: 13000000, // 13m³ in cm³
+        maxVolume: 13000000,
         dimensions: { height: 170, width: 120, length: 300 },
         pricePerKm: 0.60
       },
@@ -30,7 +29,7 @@ const PRICE_CONFIG = {
         name: 'Furgão com contentor de bascula',
         example: '9 europaletes',
         maxWeight: 1000,
-        maxVolume: 20000000, // 20m³ in cm³
+        maxVolume: 20000000,
         dimensions: { height: 220, width: 200, length: 480 },
         pricePerKm: 0.90
       }
@@ -51,7 +50,7 @@ const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const toRad = value => (value * Math.PI) / 180; 
+const toRad = value => (value * Math.PI) / 180;
 
 const LocationInput = ({ label, value, suggestions, onChange, onSelect, error }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -150,7 +149,8 @@ const Quotation = () => {
     quotation: null,
     distance: null,
     loading: false,
-    isCalculated: false
+    isCalculated: false,
+    showSuccess: false
   });
 
   const [suggestions, setSuggestions] = useState({
@@ -158,6 +158,11 @@ const Quotation = () => {
     end: []
   });
 
+    // Add this new useEffect
+    useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+    
   const apiKey = '7747d85f0d034e54a29de6f865fee8f2';
 
   const getButtonStyles = (type) => {
@@ -258,10 +263,7 @@ const Quotation = () => {
     
     setFieldErrors({});
     
-    // Calculate round trip distance
     const roundTripDistance = distance * 2;
-    
-    // Calculate price based on price per km for round trip
     const totalPrice = appropriateVan.pricePerKm * roundTripDistance;
     
     return {
@@ -273,8 +275,7 @@ const Quotation = () => {
         vanType: {
           name: appropriateVan.name,
           example: appropriateVan.example,
-          dimensions: appropriateVan.dimensions,
-          europaletes: appropriateVan.europaletes
+          dimensions: appropriateVan.dimensions
         },
         singleVolume,
         totalVolume,
@@ -298,7 +299,12 @@ const Quotation = () => {
       }
     }));
     setSuggestions({ start: [], end: [] });
-    setState(prev => ({ ...prev, isCalculated: false, quotation: null }));
+    setState(prev => ({ 
+      ...prev, 
+      isCalculated: false, 
+      quotation: null,
+      showSuccess: false 
+    }));
     setFieldErrors({});
   };
 
@@ -381,6 +387,7 @@ const Quotation = () => {
       return;
     }
     console.log('Form submitted:', formData);
+    setState(prev => ({ ...prev, showSuccess: true }));
   };
 
   return (
@@ -410,7 +417,7 @@ const Quotation = () => {
                 onClick={() => resetForm('aviao')}
                 className={getButtonStyles('aviao')}
               >
-                <Plane className={`h-5 w-5 ${formData.serviceType === 'aviao' ? 'text-white' : 'text-gray-600'}`} />
+<Plane className={`h-5 w-5 ${formData.serviceType === 'aviao' ? 'text-white' : 'text-gray-600'}`} />
                 <span>Avião Internacional</span>
               </button>
             </div>
@@ -564,7 +571,6 @@ const Quotation = () => {
         </button>
       </form>
 
-
       {state.isCalculated && (
         <div ref={summaryRef} className="space-y-6 p-6 bg-gray-50 rounded-lg">
           {formData.serviceType === 'carrinha' ? (
@@ -709,6 +715,14 @@ const Quotation = () => {
             >
               Enviar Pedido
             </button>
+
+            {state.showSuccess && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800 text-center">
+                  O seu pedido de orçamento foi feito com sucesso. A nossa equipa está a trabalhar para lhe dar uma resposta o mais breve possível.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

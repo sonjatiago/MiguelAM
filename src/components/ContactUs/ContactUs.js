@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone } from 'lucide-react';
 import './ContactUs.css';
 
@@ -10,6 +10,11 @@ const ContactUs = () => {
   });
 
   const [formSubmitted, setFormSubmitted] = useState(false);
+
+  // Add useEffect to scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []); // Empty dependency array means this runs once when component mounts
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +32,7 @@ const ContactUs = () => {
 
   const contactInfo = {
     email: 'miguelamtransportes@gmail.com',
-    phone: '+351 123 456 789'
+    phone: '+351 919664601'
   };
 
   return (

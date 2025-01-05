@@ -4,6 +4,7 @@ import { NavBar } from './components/NavBar/NavBar';
 import Homepage from './components/Homepage/Homepage';
 import ContactUs from './components/ContactUs/ContactUs';
 import Quotation from "./components/Quotation/Quotation";
+import { Footer } from "./components/Footer/Footer"; // Footer import
 import './App.css';
 
 // Page transition wrapper component
@@ -67,7 +68,8 @@ function App() {
             } />
           </Routes>
         </main>
-        
+           {/* Add Footer here */}
+           <Footer /> {/* This will render your Footer component */}
         {/* Back to top button */}
         <button 
           className="back-to-top"

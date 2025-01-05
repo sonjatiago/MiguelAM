@@ -6,31 +6,33 @@ import debounce from 'lodash/debounce';
 const PRICE_CONFIG = {
   aviao: { baseRate: 2, weightFactor: 1 },
   carrinha: {
-    baseRate: 2,
     types: [
       {
         id: 'ligeira',
-        name: 'Carrinha Ligeira de Mercadorias',
-        example: 'ex. Citroen Berlingo',
-        maxWeight: 800,
-        maxVolume: 4400000,
-        basePrice: 100
+        name: 'Carrinha Comercial Ligeira',
+        example: '2 europaletes',
+        maxWeight: 600,
+        maxVolume: 2000000, // 2m³ in cm³
+        dimensions: { height: 100, width: 120, length: 180 },
+        pricePerKm: 0.40
       },
       {
         id: 'furgao',
         name: 'Carrinha Furgão',
-        example: 'ex. Peugeot Boxer',
-        maxWeight: 2000,
-        maxVolume: 10000000,
-        basePrice: 200
+        example: '5 europaletes',
+        maxWeight: 1200,
+        maxVolume: 13000000, // 13m³ in cm³
+        dimensions: { height: 170, width: 120, length: 300 },
+        pricePerKm: 0.60
       },
       {
         id: 'furgaoGrande',
-        name: 'Carrinha Furgão Grande',
-        example: 'ex. Iveco Daily',
-        maxWeight: 3500,
-        maxVolume: 18000000,
-        basePrice: 300
+        name: 'Furgão com contentor de bascula',
+        example: '9 europaletes',
+        maxWeight: 1000,
+        maxVolume: 20000000, // 20m³ in cm³
+        dimensions: { height: 220, width: 200, length: 480 },
+        pricePerKm: 0.90
       }
     ]
   }
@@ -49,7 +51,7 @@ const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const toRad = value => (value * Math.PI) / 180;
+const toRad = value => (value * Math.PI) / 180; 
 
 const LocationInput = ({ label, value, suggestions, onChange, onSelect, error }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -243,12 +245,12 @@ const Quotation = () => {
     
     if (!appropriateVan) {
       if (weight > config.types[2].maxWeight) {
-        setFieldErrors({ weight: 'Peso excede o limite máximo de 3500kg' });
+        setFieldErrors({ weight: 'Peso excede o limite máximo permitido' });
       }
       if (totalVolume > config.types[2].maxVolume) {
         setFieldErrors({ 
-          volumes: 'Volume total excede o limite máximo de 18m³',
-          dimensions: 'Volume total excede o limite máximo de 18m³'
+          volumes: 'Volume total excede o limite máximo permitido',
+          dimensions: 'Volume total excede o limite máximo permitido'
         });
       }
       throw new Error('Validation failed');
@@ -256,17 +258,23 @@ const Quotation = () => {
     
     setFieldErrors({});
     
-    const basePrice = appropriateVan.basePrice;
-    const distancePrice = config.baseRate * distance;
+    // Calculate round trip distance
+    const roundTripDistance = distance * 2;
+    
+    // Calculate price based on price per km for round trip
+    const totalPrice = appropriateVan.pricePerKm * roundTripDistance;
     
     return {
-      totalPrice: basePrice + distancePrice,
+      totalPrice,
       breakdown: { 
-        basePrice,
-        distancePrice,
+        pricePerKm: appropriateVan.pricePerKm,
+        roundTripDistance,
+        oneWayDistance: distance,
         vanType: {
           name: appropriateVan.name,
-          example: appropriateVan.example
+          example: appropriateVan.example,
+          dimensions: appropriateVan.dimensions,
+          europaletes: appropriateVan.europaletes
         },
         singleVolume,
         totalVolume,
@@ -556,6 +564,7 @@ const Quotation = () => {
         </button>
       </form>
 
+
       {state.isCalculated && (
         <div ref={summaryRef} className="space-y-6 p-6 bg-gray-50 rounded-lg">
           {formData.serviceType === 'carrinha' ? (
@@ -564,7 +573,7 @@ const Quotation = () => {
                 <div className="text-2xl font-bold">
                   €{state.quotation.totalPrice.toFixed(2)}
                 </div>
-                <div className="text-sm text-gray-600">Preço Total</div>
+                <div className="text-sm text-gray-600">Preço Total (ida e volta)</div>
               </div>
               
               <div className="space-y-2">
@@ -572,10 +581,16 @@ const Quotation = () => {
                   <span>Tipo de Veículo</span>
                   <span>{state.quotation.breakdown.vanType.name}</span>
                 </div>
-                <div className="text-xs text-gray-500 text-right">
-                  {state.quotation.breakdown.vanType.example}
-                </div>
                 
+                <div className="flex justify-between text-sm">
+                  <span>Dimensões máximas (cm)</span>
+                  <span>
+                    {state.quotation.breakdown.vanType.dimensions.length} x{' '}
+                    {state.quotation.breakdown.vanType.dimensions.width} x{' '}
+                    {state.quotation.breakdown.vanType.dimensions.height}
+                  </span>
+                </div>
+
                 <div className="flex justify-between text-sm">
                   <span>Volume por Unidade</span>
                   <span>
@@ -598,18 +613,18 @@ const Quotation = () => {
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span>Preço Base</span>
-                  <span>€{state.quotation.breakdown.basePrice.toFixed(2)}</span>
+                  <span>Preço por km</span>
+                  <span>€{state.quotation.breakdown.pricePerKm.toFixed(2)}/km</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span>Preço por Distância</span>
-                  <span>€{state.quotation.breakdown.distancePrice.toFixed(2)}</span>
+                  <span>Distância (ida)</span>
+                  <span>{state.quotation.breakdown.oneWayDistance.toFixed(1)} km</span>
                 </div>
                 
-                <div className="flex justify-between text-sm">
-                  <span>Distância</span>
-                  <span>{state.distance.toFixed(1)} km</span>
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Distância Total (ida e volta)</span>
+                  <span>{state.quotation.breakdown.roundTripDistance.toFixed(1)} km</span>
                 </div>
               </div>
             </>

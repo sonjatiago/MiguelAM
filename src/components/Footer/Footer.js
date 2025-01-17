@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import './Footer.css';
 import logo from '../../assets/logo1.jpg';
+import Logo2 from '../../assets/lg2.png';
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -112,8 +113,22 @@ export const Footer = () => {
       <div className="footer-bottom">
         <div className="footer-bottom-content">
           <p>
-            &copy; {currentYear} Miguel AM Transportes. {t.madeBy} {t.allRightsReserved}
+            &copy; {currentYear} Criado por TG Web Design. Miguel AM Transportes. {t.allRightsReserved}
           </p>
+          <p>
+          <a 
+            href="https://tgwebdesign.netlify.app/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <img 
+              src={Logo2} 
+              alt="TG Web Design Logo" 
+              className="footer-logo2" 
+              style={{ width: "60px", height: "auto", }} // Optional inline style
+            />
+          </a>
+        </p>
         </div>
       </div>
     </footer>
